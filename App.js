@@ -15,8 +15,13 @@ app.get('/requestaudio/:name', (req, res) => {
     return;
   }
 
-  let name = req.params['name'].toLowerCase();
+  let name = req.params['name'].trim().toLowerCase();
   let audio_filename = file_path.replace('{name}', encodeURIComponent(name));
+
+  if(name == '') {
+    res.status(404).json({'error': 'Not Found! Empty name not allowed.'});
+    return;
+  }
 
   if(!fs.existsSync(audio_filename)) { // Arquivo não existe, temos que baixar ele da AWS.
     res.status(404).json({'error': 'Not Found! This audio does not exist, and we could not download it from AWS at this time...'}); // TODO: baixar da AWS (lembrete: checar limites diários/mensais antes de baixar).
