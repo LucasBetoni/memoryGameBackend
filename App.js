@@ -4,6 +4,10 @@ const { fileURLToPath } = require("url");
 const app = express();
 const AWS = require("aws-sdk");
 
+const DAILY_CARACTE_SYNTHESIZE_LIMIT = 161290;
+var counterDate = new Date().getDate();
+var dailyCounter = 0;
+
 AWS.config.loadFromPath("./awscreds.json");
 
 const Polly = new AWS.Polly({
@@ -27,8 +31,8 @@ app.get("/requestaudio/:name", (req, res) => {
   let name = req.params["name"].trim().toLowerCase();
   let audio_filename = file_path.replace("{name}", encodeURIComponent(name));
 
-  if (name == "") {
-    res.status(404).json({ error: "Not Found! Empty name not allowed." });
+  if (name == "" || name.length > 42) {
+    res.status(404).json({ error: "Not Found! Name must have 1 - 41 caracteres" });
     return;
   }
 
@@ -47,6 +51,23 @@ app.get("/requestaudio/:name", (req, res) => {
       Engine: "neural",
       LanguageCode: "pt-BR",
     };
+
+
+    if(counterDate !=  (new Date().getDate())){
+      dailyCounter = 0;
+      counterDate =  new Date().getDate();
+    }
+    if(dailyCounter > DAILY_CARACTE_SYNTHESIZE_LIMIT){
+      res
+      .status(503)
+      .json({
+        error:
+          "Daily limit of speech synthesis reached! We could not download this audio from AWS at this time...",
+      });
+    return;
+    }
+
+    dailyCounter += name.length;
 
     Polly.synthesizeSpeech(pollyparams, (err, data) => {
       if (err) {
@@ -85,7 +106,7 @@ app.get("/requestaudio/:name", (req, res) => {
         res.download(audio_filename);
       });
     });
-
+    
     return;
   }
 

@@ -128,3 +128,6 @@ dist
 
 #aws credentials
 awscreds.json
+
+#audiofiles
+public/*.mp3
