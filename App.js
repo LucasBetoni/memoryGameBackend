@@ -2,6 +2,14 @@ const express = require('express');
 const fs = require('fs');
 const { fileURLToPath } = require('url');
 const app = express()
+const AWS = require('aws-sdk');
+
+AWS.config.loadFromPath('./awscreds.json');
+
+const Polly = new AWS.Polly({
+  signatureVersion: 'v4',
+  region: 'us-east-1'
+})
 
 const port = 3000;
 const password = 'coelho';
@@ -24,7 +32,40 @@ app.get('/requestaudio/:name', (req, res) => {
   }
 
   if(!fs.existsSync(audio_filename)) { // Arquivo não existe, temos que baixar ele da AWS.
-    res.status(404).json({'error': 'Not Found! This audio does not exist, and we could not download it from AWS at this time...'}); // TODO: baixar da AWS (lembrete: checar limites diários/mensais antes de baixar).
+   // res.status(404).json({'error': 'Not Found! This audio does not exist, and we could not download it from AWS at this time...'});
+    
+    // TODO: baixar da AWS (lembrete: checar limites diários/mensais antes de baixar).
+    
+        // polly settup
+        let pollyparams = {
+          Text: name,
+          TextType: "text",
+          OutputFormat: "mp3",
+          VoiceId: "Camila",
+          Engine: "neural",
+          LanguageCode: "pt-BR",
+    
+        };
+
+        Polly.synthesizeSpeech(pollyparams, (err, data) => {
+          if (err) {
+            res.status(404).json({'error': 'Not Found! This audio does not exist, and we could not download it from AWS at this time...'});
+   
+              console.log(err.message)
+          } else if (data) {
+            if (data.AudioStream instanceof Buffer) {
+                fs.writeFile(audio_filename, data.AudioStream, function(err) {
+                    if (err) {
+                      res.status(404).json({'error': 'Not Found! This audio does not exist, and we could not download it from AWS at this time...'});  
+                      return console.log(err);
+                    }
+                    console.log("The file was saved!")
+                    res.download(audio_filename);
+                })
+            }
+        }
+      })
+    
     return;
   }
 
@@ -44,3 +85,4 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
+
